@@ -1,5 +1,6 @@
 import asyncio
 import glob
+import json
 import os
 
 import fire
@@ -8,34 +9,37 @@ from r2r.client import R2RClient
 from r2r.core.utils import generate_id_from_label
 
 
-class PDFChat:
+class QnAClient:
     def __init__(self, base_url="http://localhost:8000", user_id=None):
         self.client = R2RClient(base_url)
         if not user_id:
             self.user_id = generate_id_from_label("user_id")
         self.titles = {
-            "meditations.pdf": "Title: Meditations - Marcus Aurelius",
-            # uncomment the following line to add more documents
-            # "the_republic.pdf": "Title: The Republic - Plato",
+            "lyft_2021.pdf": "Title: Lyft 10k",
+            "uber_2021.pdf": "Title: Uber 10k",
+            "the_republic.pdf": "Title: The Republic - Plato",
+            "meditations.pdf": "Title: Meditations - Aurelius",
         }
+        self.history = []
 
-    def ingest(self):
+    def ingest(self, document_filter="lyft_2021.pdf"):
         current_file_directory = os.path.dirname(os.path.abspath(__file__))
         data_path = os.path.join(current_file_directory, "..", "data")
         for file_path in glob.glob(os.path.join(data_path, "*.pdf")):
             file_name = file_path.split(os.path.sep)[-1]
-            if file_name in self.titles:
-                document_id = generate_id_from_label(file_path)
-                metadata = {
-                    "user_id": self.user_id,
-                    "chunk_prefix": self.titles[file_name],
-                }
-                settings = {}
-                upload_response = self.client.upload_and_process_file(
-                    document_id, file_path, metadata, settings
-                )
-                print("Upload response = ", upload_response)
-
+            if document_filter.lower() == "all" or file_name.lower().startswith(document_filter.lower()):
+                if file_name in self.titles:
+                    document_id = generate_id_from_label(file_path)
+                    metadata = {
+                        "user_id": self.user_id,
+                        "chunk_prefix": self.titles[file_name],
+                    }
+                    settings = {}
+                    upload_response = self.client.upload_and_process_file(
+                        document_id, file_path, metadata, settings
+                    )
+                    print("Upload response = ", upload_response)
+                    
     def search(self, query):
         search_response = self.client.search(
             query,
@@ -87,4 +91,4 @@ class PDFChat:
 
 
 if __name__ == "__main__":
-    fire.Fire(PDFChat)
+    fire.Fire(QnAClient)

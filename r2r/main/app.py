@@ -1,5 +1,7 @@
 import json
 import logging
+import os
+import re
 from pathlib import Path
 from typing import AsyncGenerator, Generator, Optional, Union, cast
 
@@ -14,6 +16,7 @@ from fastapi import (
     UploadFile,
 )
 from fastapi.responses import StreamingResponse
+from pydantic import HttpUrl
 
 from r2r.core import (
     EmbeddingPipeline,
@@ -23,6 +26,7 @@ from r2r.core import (
     LoggingDatabaseConnection,
     RAGPipeline,
     RAGPipelineOutput,
+    ScraperPipeline,
 )
 from r2r.main.utils import (  # configure_logging,
     R2RConfig,
@@ -52,6 +56,7 @@ MB_CONVERSION_FACTOR = 1024 * 1024
 def create_app(
     ingestion_pipeline: IngestionPipeline,
     embedding_pipeline: EmbeddingPipeline,
+    scraper_pipeline: ScraperPipeline,
     eval_pipeline: EvalPipeline,
     rag_pipeline: RAGPipeline,
     config: R2RConfig,
@@ -67,7 +72,32 @@ def create_app(
     upload_path = upload_path or find_project_root(CURRENT_DIR) / "uploads"
 
     if not upload_path.exists():
-        upload_path.mkdir()
+        os.makedirs(upload_path, exist_ok=True)
+
+    @app.post("/process_url")
+    async def process_url(
+        document_id: str = Form(...),
+        url: HttpUrl = Form(...),
+        metadata: str = Form("{}"),
+        settings: str = Form("{}"),
+    ):
+        metadata_json = json.loads(metadata)
+        settings_model = SettingsModel.parse_raw(settings)
+
+        try:
+            docs = scraper_pipeline.run(
+                document_id=document_id, url=str(url), metadata=metadata_json
+            )
+            for doc in docs:
+                embedding_pipeline.run(
+                    doc, **settings_model.embedding_settings.dict()
+                )
+            return {"message": f"URL {url} processed successfully."}
+        except Exception as e:
+            logging.error(
+                f"scrape_url_and_process: [Error](url={url}, error={str(e)})"
+            )
+            raise HTTPException(status_code=500, detail=str(e))
 
     @app.post("/upload_and_process_file/")
     # TODO - Why can't we use a BaseModel to represent the request?
@@ -203,7 +233,10 @@ def create_app(
                 )
                 # Tell the type checker that rag_completion is a RAGPipelineOutput
                 rag_completion = cast(RAGPipelineOutput, untyped_completion)
+
                 if not rag_completion.completion:
+                    if rag_completion.search_results:
+                        return rag_completion
                     raise ValueError(
                         "No completion found in RAGPipelineOutput."
                     )

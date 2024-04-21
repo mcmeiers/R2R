@@ -87,11 +87,11 @@ A local vector database will be used to store the embeddings. The current defaul
 To stand up the server, we can readily choose from one of the two options below:
 
 ```bash
-python -m r2r.examples.servers.basic_pipeline --config local_ollama
+python -m r2r.examples.servers.config_pipeline --config local_ollama
 ```
 
 ```bash
-python -m r2r.examples.servers.basic_pipeline --config local_llama_cpp
+python -m r2r.examples.servers.config_pipeline --config local_llama_cpp
 ```
 
 Note, to run with Llama.cpp you must download `tinyllama-1.1b-chat-v1.0.Q2_K.gguf` [here](https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q2_K.gguf?download=true) and place the output into `~/cache/model/`. The choice between ollama and Llama.cpp depends on our preferred LLM provider.
@@ -105,7 +105,7 @@ With our environment set up and our server running in a separate process, we're 
 Run this command to ingest the document:
 
 ```bash
-python -m r2r.examples.clients.run_basic_client ingest
+python -m r2r.examples.clients.run_qna_client ingest
 ```
 
 The output should look something like this:
@@ -137,16 +137,16 @@ ollama serve llama2
 Then, to ask a question, run:
 
 ```bash
-python -m r2r.examples.clients.run_basic_client rag_completion \
-  --query="What does Marcus Aurelius say about the rules of life?" \
+python -m r2r.examples.clients.run_qna_client rag_completion \
+  --query="What was Lyfts profit in 2020?" \
   --model="ollama/llama2"
 ```
 
 For Llama.cpp, run:
 
 ```bash
-python -m r2r.examples.clients.run_basic_client rag_completion \
-  --query="What does Marcus Aurelius say about the rules of life?" \
+python -m r2r.examples.clients.run_qna_client rag_completion \
+  --query="What was Lyfts profit in 2020?" \
   --model=tinyllama-1.1b-chat-v1.0.Q2_K.gguf
 ```
 
@@ -157,7 +157,14 @@ This command tells R2R to use the specified model to generate a completion for t
 
 After a brief wait, you should see the LLM's response, perhaps something like:
 
-> Marcus Aurelius provides insights into the rules of life in his book "Meditations." He emphasizes the importance of living a virtuous and rational life, and offers practical advice on how to achieve this. Here are some key points he makes:\n\n1. The good man ought to live in accordance with reason and virtue: Aurelius believes that the good man should strive to live in harmony with nature and reason, rather than being swayed by emotions or desires. (Book VI, 53)\n2. The universe is governed by reason: Aurelius suggests that the universe operates according to reason and order, and that humans should strive to align themselves with this larger cosmic order. (Book V, 17)\n3. The rules of life are simple: Aurelius argues that the rules of life are straightforward and easy to follow, but requires discipline and self-control to implement them. (Book VI, 40)\n4. The key to happiness is living in accordance with nature: Aurelius believes that true happiness can be achieved by living in harmony with nature and following the natural order of things. (Book V, 17)\n5. The virtuous life is a mean between extremes: Aurelius suggests that the virtuous life is found in the middle ground between excess and deficiency, and that one should strive to find this balance in all aspects of life. (Book VI, 40)\n6. The universe is governed by cause and effect: Aurelius believes that every action has consequences, and that one should be mindful of the effects of their actions on themselves and others. (Book V, 17)\n7. The key to a good life is living in the present moment: Aurelius argues that the present moment is the only truly real time, and that one should focus on living in the present rather than dwelling on the past or worrying about the future. (Book VI, 40)\n8. The virtuous life is a lifelong journey: Aurelius suggests that the pursuit of virtue is a lifelong process, and that one should strive to improve themselves constantly. (Book V, 17)\n\nOverall, Marcus Aurelius\' views on the rules of life emphasize the importance of living a virtuous and rational life, and provide practical advice on how to achieve this through living in harmony with nature, reason, and the present moment.
+```json
+{
+  "message": {
+    "search_results": [...],
+    "content": "Lyft did not make a profit in 2020; instead, it reported a net loss of $1.8 billion."
+  }
+}
+```
 
 How cool is that? With R2R, we've built a simple QA system backed by a local LLM that we can converse with. The best part is, all the data and compute stayed on our own machine.
 
